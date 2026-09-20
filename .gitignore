@@ -1,15 +1,36 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle & Build artifacts
+.gradle/
+build/
+*/build/
+bin/
+gen/
+out/
+
+# Local machine configuration
 local.properties
+/local.properties
+
+# Kotlin compiler sessions & cache
+.kotlin/
+
+# Android Studio & IntelliJ IDEA
+*.iml
+.idea/
+*.iws
+
+# Android NDK / Native build cache
+.externalNativeBuild
+.cxx/
+/captures
+
+# Logs & temp files
+*.log
+*.tmp
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Signing & Credentials (protect release keys)
+*.keystore
+signing.properties
