@@ -98,6 +98,10 @@ class MyAccessibilityService : AccessibilityService() {
                                 "Reply received: ${command.message}"
                         )
                     }
+                    is AutomationCommand.PressBack -> {
+                        val success = performGlobalAction(GLOBAL_ACTION_BACK)
+                        Timber.d("Performed GLOBAL_ACTION_BACK: success=$success")
+                    }
                     AutomationCommand.Stop -> {
                         Timber.d("Stopping automation")
                         job.cancel()

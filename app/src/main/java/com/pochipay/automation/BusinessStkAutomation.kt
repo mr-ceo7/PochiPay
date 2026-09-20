@@ -9,6 +9,8 @@ import com.pochipay.StatusLogEngine
 import com.pochipay.data.AutomationCommand
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 data class BusinessStkResult(
@@ -20,31 +22,71 @@ data class BusinessStkResult(
 
 object BusinessStkAutomation {
 
+    private val automationMutex = Mutex()
+
     suspend fun execute(
         context: Context,
         phone: String,
         amount: Double,
         requestId: String? = null
     ): BusinessStkResult {
+        // Concurrency Guard: Ensure only one STK flow runs at a time
+        val acquired = withTimeoutOrNull(25_000L) {
+            automationMutex.lock()
+            true
+        } ?: false
+
+        if (!acquired) {
+            val busyErr = "Automation engine is currently busy executing another transaction."
+            StatusLogEngine.updateLog("Error: $busyErr\n")
+            return BusinessStkResult(success = false, errorMessage = busyErr, requestId = requestId)
+        }
+
+        try {
+            // Global Execution Timeout: Guarantee execution completes within 75s
+            val result = withTimeoutOrNull(75_000L) {
+                runAutomationPipeline(context, phone, amount, requestId)
+            }
+
+            return result ?: run {
+                val timeoutErr = "STK Push automation timed out after 75s."
+                StatusLogEngine.updateLog("Error: $timeoutErr\n")
+                // Cleanup: attempt back presses to return to clean state
+                try {
+                    AutomationEngine.sendCommand(AutomationCommand.PressBack)
+                    delay(300)
+                    AutomationEngine.sendCommand(AutomationCommand.PressBack)
+                } catch (ignored: Exception) {}
+                BusinessStkResult(success = false, errorMessage = timeoutErr, requestId = requestId)
+            }
+        } finally {
+            try {
+                bringPochiPayToForeground(context)
+                context.sendBroadcast(Intent("com.pochipay.ACTION_TASK_COMPLETED"))
+            } catch (ignored: Exception) {}
+            if (automationMutex.isLocked) {
+                automationMutex.unlock()
+            }
+        }
+    }
+
+    private suspend fun runAutomationPipeline(
+        context: Context,
+        phone: String,
+        amount: Double,
+        requestId: String?
+    ): BusinessStkResult {
         val prefs = PreferenceManager.getDefaultSharedPreferences(context)
         val targetPackage = prefs.getString("target_package", "com.safaricom.mpesa.orgapp")
             ?.takeIf { it.isNotBlank() } ?: "com.safaricom.mpesa.orgapp"
-        val mpesaPin = prefs.getString("mpesa_pin", "") ?: ""
+        val mpesaPin = prefs.getString("mpesa_pin", "")?.trim() ?: ""
 
         StatusLogEngine.updateLog("Starting Business STK Push for $phone, Amount: KES $amount (Target: $targetPackage)\n")
 
-        // Ensure developer options check does not trigger Safaricom Security Alert (if WRITE_SECURE_SETTINGS is granted)
-        try {
-            android.provider.Settings.Global.putInt(
-                context.contentResolver,
-                android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
-                0
-            )
-        } catch (t: Throwable) {
-            Timber.d("Could not set DEVELOPMENT_SETTINGS_ENABLED: ${t.message}")
-        }
+        // 0. Safeguard: Suppress Developer Options alert
+        suppressDeveloperOptions(context)
 
-        // 1. Launch M-PESA for Business App
+        // 1. Launch / Foreground Target App
         val launchIntent = context.packageManager.getLaunchIntentForPackage(targetPackage)
         if (launchIntent == null) {
             val err = "Target app ($targetPackage) is not installed on this device."
@@ -55,56 +97,83 @@ object BusinessStkAutomation {
         context.startActivity(launchIntent)
         StatusLogEngine.updateLog("Launching $targetPackage...\n")
 
-        // Wait for app window to settle
-        delay(2500)
+        delay(2200)
 
-        // 2. Check for PIN Unlock Screen ("ENTER PIN:" or "OPERATOR ID:")
-        val pinScreenFound = checkScreenContains(listOf("ENTER PIN", "OPERATOR ID", "CHANGE PIN"), timeoutMs = 3500)
-        if (pinScreenFound) {
-            StatusLogEngine.updateLog("Detected PIN unlock screen.\n")
-            if (mpesaPin.length != 4) {
-                val err = "4-digit M-PESA Business PIN not configured in PochiPay settings."
+        // 2. Pre-flight Recovery: Normalize screen to Dashboard or PIN prompt
+        normalizeToDashboardOrPin(context, targetPackage, mpesaPin)
+
+        // 3. Handle PIN Screen if present
+        if (isPinScreenVisible()) {
+            val pinOk = handlePinEntry(mpesaPin)
+            if (!pinOk) {
+                val err = "Invalid or unconfigured M-PESA PIN in PochiPay settings."
                 StatusLogEngine.updateLog("Error: $err\n")
                 return BusinessStkResult(success = false, errorMessage = err, requestId = requestId)
             }
-            StatusLogEngine.updateLog("Entering 4-digit PIN...\n")
-            for (digit in mpesaPin) {
-                AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = digit.toString())))
-                delay(200)
-            }
-            delay(2000)
-        } else {
-            StatusLogEngine.updateLog("App already unlocked or no PIN prompt visible.\n")
         }
 
-        // 3. Look for Home Dashboard with "NEW SALE"
-        StatusLogEngine.updateLog("Looking for dashboard 'NEW SALE'...\n")
-        val foundNewSale = waitForScreenContent(listOf("NEW SALE"), timeoutMs = 8000)
+        // 4. Locate and Tap "NEW SALE"
+        StatusLogEngine.updateLog("Locating dashboard 'NEW SALE'...\n")
+        var foundNewSale = waitForScreenContent(listOf("NEW SALE", "New Sale"), timeoutMs = 8000)
+
+        // If not found, check if an interrupting dialog or lingering prompt list is active
         if (!foundNewSale) {
-            val err = "Failed to find 'NEW SALE' on dashboard."
+            dismissAnyInterruptingDialog()
+            // Check if we are already in the "M-PESA PROMPT" view or a previous sub-screen
+            val inSubScreen = checkScreenContains(listOf("M-PESA PROMPT", "M-PESA Prompt", "ENTER CUSTOMER PHONE NUMBER"), timeoutMs = 1500)
+            if (inSubScreen) {
+                StatusLogEngine.updateLog("Detected lingering sub-screen. Pressing back to return to dashboard...\n")
+                AutomationEngine.sendCommand(AutomationCommand.PressBack)
+                delay(1200)
+                foundNewSale = waitForScreenContent(listOf("NEW SALE", "New Sale"), timeoutMs = 4000)
+            }
+        }
+
+        if (!foundNewSale) {
+            // Check for any blocking error on dashboard
+            val alertMsg = checkForInterruptingDialogOrError()
+            val err = alertMsg ?: "Failed to find 'NEW SALE' on dashboard."
             StatusLogEngine.updateLog("Error: $err\n")
             return BusinessStkResult(success = false, errorMessage = err, requestId = requestId)
         }
+
         StatusLogEngine.updateLog("Tapping 'NEW SALE'...\n")
         AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "NEW SALE")))
         delay(1200)
 
-        // 4. Bottom sheet with "M-PESA Prompt" and "Pay by QR"
+        // Check if PIN was prompted after tapping NEW SALE (session re-auth)
+        if (isPinScreenVisible()) {
+            handlePinEntry(mpesaPin)
+            delay(1000)
+            AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "NEW SALE")))
+            delay(1200)
+        }
+
+        // 5. Bottom Sheet: Tap "M-PESA Prompt"
         StatusLogEngine.updateLog("Looking for 'M-PESA Prompt' option...\n")
-        val foundPromptOption = waitForScreenContent(listOf("M-PESA Prompt"), timeoutMs = 6000)
+        var foundPromptOption = waitForScreenContent(listOf("M-PESA Prompt", "M-PESA PROMPT"), timeoutMs = 6000)
         if (!foundPromptOption) {
-            val err = "Failed to find 'M-PESA Prompt' in sale options."
+            // Maybe bottom sheet didn't open; re-tap NEW SALE once
+            StatusLogEngine.updateLog("Retrying tap on 'NEW SALE'...\n")
+            AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "NEW SALE")))
+            delay(1500)
+            foundPromptOption = waitForScreenContent(listOf("M-PESA Prompt", "M-PESA PROMPT"), timeoutMs = 4000)
+        }
+
+        if (!foundPromptOption) {
+            val err = "Failed to find 'M-PESA Prompt' option in bottom sheet."
             StatusLogEngine.updateLog("Error: $err\n")
             return BusinessStkResult(success = false, errorMessage = err, requestId = requestId)
         }
+
         StatusLogEngine.updateLog("Tapping 'M-PESA Prompt'...\n")
         AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "M-PESA Prompt")))
         delay(1500)
 
-        // 5. Prompt list screen or direct phone entry
-        val onPhoneEntryDirectly = checkScreenContains(listOf("ENTER CUSTOMER PHONE NUMBER"), timeoutMs = 2000)
+        // 6. Navigation to Phone Entry Screen
+        val onPhoneEntryDirectly = checkScreenContains(listOf("ENTER CUSTOMER PHONE NUMBER", "CUSTOMER PHONE NUMBER"), timeoutMs = 2000)
         if (!onPhoneEntryDirectly) {
-            val foundPromptList = waitForScreenContent(listOf("M-PESA PROMPT"), timeoutMs = 6000)
+            val foundPromptList = waitForScreenContent(listOf("M-PESA PROMPT", "M-PESA Prompt"), timeoutMs = 5000)
             if (foundPromptList) {
                 StatusLogEngine.updateLog("Tapping 'M-PESA PROMPT' initiation button...\n")
                 AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = "M-PESA PROMPT", index = 1)))
@@ -112,9 +181,12 @@ object BusinessStkAutomation {
             }
         }
 
-        // 6. Customer Phone Number Entry Screen ("ENTER CUSTOMER PHONE NUMBER")
-        StatusLogEngine.updateLog("Looking for customer phone number input...\n")
-        val foundPhoneInput = waitForScreenContent(listOf("ENTER CUSTOMER PHONE NUMBER"), timeoutMs = 7000)
+        // 7. Customer Phone Number Entry Screen
+        StatusLogEngine.updateLog("Looking for customer phone input screen...\n")
+        val foundPhoneInput = waitForScreenContent(
+            listOf("ENTER CUSTOMER PHONE NUMBER", "CUSTOMER PHONE NUMBER", "PHONE NUMBER"),
+            timeoutMs = 7000
+        )
         if (!foundPhoneInput) {
             val err = "Could not find customer phone number entry screen."
             StatusLogEngine.updateLog("Error: $err\n")
@@ -123,23 +195,31 @@ object BusinessStkAutomation {
 
         val cleanPhone = formatKenyanPhone(phone)
         StatusLogEngine.updateLog("Entering customer phone: $cleanPhone\n")
-
         for (digit in cleanPhone) {
             AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = digit.toString())))
-            delay(150)
+            delay(160)
         }
-        delay(600)
+        delay(500)
 
-        StatusLogEngine.updateLog("Tapping 'CONTINUE' for phone number...\n")
+        StatusLogEngine.updateLog("Tapping 'CONTINUE' for phone...\n")
         AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "CONTINUE")))
         delay(1500)
 
-        // 7. Amount Entry Screen ("KSH. 0" or "PHONE NUMBER")
+        // Check for immediate Phone Validation Error Dialog (e.g., "Invalid Phone", "Customer does not exist")
+        val phoneErr = checkForInterruptingDialogOrError()
+        if (phoneErr != null) {
+            StatusLogEngine.updateLog("Phone Entry Rejected: $phoneErr\n")
+            dismissAnyInterruptingDialog()
+            return BusinessStkResult(success = false, errorMessage = phoneErr, requestId = requestId)
+        }
+
+        // 8. Amount Entry Screen
         StatusLogEngine.updateLog("Looking for amount entry screen...\n")
-        val foundAmountScreen = waitForScreenContent(listOf("KSH.", "PHONE NUMBER"), timeoutMs = 6000)
+        val foundAmountScreen = waitForScreenContent(listOf("KSH.", "Ksh", "AMOUNT", "PHONE NUMBER"), timeoutMs = 7000)
         if (!foundAmountScreen) {
-            val err = "Could not find amount entry screen."
+            val err = checkForInterruptingDialogOrError() ?: "Could not find amount entry screen."
             StatusLogEngine.updateLog("Error: $err\n")
+            dismissAnyInterruptingDialog()
             return BusinessStkResult(success = false, errorMessage = err, requestId = requestId)
         }
 
@@ -147,20 +227,29 @@ object BusinessStkAutomation {
         StatusLogEngine.updateLog("Entering amount KES $amountIntStr...\n")
         for (digit in amountIntStr) {
             AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = digit.toString())))
-            delay(150)
+            delay(160)
         }
-        delay(600)
+        delay(500)
 
         StatusLogEngine.updateLog("Tapping 'CONTINUE' for amount...\n")
         AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "CONTINUE")))
         delay(2000)
 
-        // 8. Confirmation & Name Extraction Screen ("CONFIRM")
+        // Check for immediate Amount Validation Error Dialog (e.g. "Amount exceeds maximum", "Insufficient")
+        val amtErr = checkForInterruptingDialogOrError()
+        if (amtErr != null) {
+            StatusLogEngine.updateLog("Amount Entry Rejected: $amtErr\n")
+            dismissAnyInterruptingDialog()
+            return BusinessStkResult(success = false, errorMessage = amtErr, requestId = requestId)
+        }
+
+        // 9. Confirmation & Name Extraction Screen ("CONFIRM")
         StatusLogEngine.updateLog("Looking for confirmation screen & resolving customer name...\n")
-        val foundConfirmScreen = waitForScreenContent(listOf("CONFIRM"), timeoutMs = 8000)
+        val foundConfirmScreen = waitForScreenContent(listOf("CONFIRM", "Confirm", "CUSTOMER NAME"), timeoutMs = 9000)
         if (!foundConfirmScreen) {
-            val err = "Confirmation screen did not appear."
+            val err = checkForInterruptingDialogOrError() ?: "Confirmation screen did not appear in time."
             StatusLogEngine.updateLog("Error: $err\n")
+            dismissAnyInterruptingDialog()
             return BusinessStkResult(success = false, errorMessage = err, requestId = requestId)
         }
 
@@ -169,26 +258,45 @@ object BusinessStkAutomation {
         var extractedCustomerName: String? = null
         val custNameIndex = screenStrings.indexOfFirst { it.contains("CUSTOMER NAME", ignoreCase = true) }
         if (custNameIndex != -1 && custNameIndex + 1 < screenStrings.size) {
-            extractedCustomerName = screenStrings[custNameIndex + 1]
+            extractedCustomerName = screenStrings[custNameIndex + 1].trim()
             StatusLogEngine.updateLog("Resolved Customer Name: $extractedCustomerName\n")
         } else {
-            StatusLogEngine.updateLog("Could not parse exact customer name from screen nodes.\n")
+            // Fallback: look for 2-3 capitalized words
+            extractedCustomerName = screenStrings.firstOrNull { str ->
+                val words = str.trim().split("\\s+".toRegex())
+                words.size in 2..4 && words.all { w -> w.isNotEmpty() && w.all { ch -> ch.isUpperCase() || ch.isLetter() } } &&
+                !str.contains("CONFIRM", ignoreCase = true) &&
+                !str.contains("SALE", ignoreCase = true) &&
+                !str.contains("PROMPT", ignoreCase = true)
+            }
+            if (extractedCustomerName != null) {
+                StatusLogEngine.updateLog("Fallback Resolved Customer Name: $extractedCustomerName\n")
+            } else {
+                StatusLogEngine.updateLog("Could not parse exact customer name.\n")
+            }
         }
 
-        // No PIN needed to trigger STK push! Tap green CONTINUE button
+        // Dispatch STK Push by tapping CONTINUE / CONFIRM
         StatusLogEngine.updateLog("Confirming STK Push dispatch...\n")
         AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = "CONTINUE")))
         delay(2000)
 
-        // 9. Success / Completion Screen ("Prompt successfully initiated to the customer.")
+        // 10. Success / Completion Screen
         StatusLogEngine.updateLog("Waiting for prompt initiation confirmation...\n")
-        val successFound = waitForScreenContent(listOf("Prompt successfully initiated to the customer"), timeoutMs = 12000)
+        val successFound = waitForScreenContent(
+            listOf(
+                "Prompt successfully initiated to the customer",
+                "Prompt successfully initiated",
+                "initiated to the customer",
+                "Prompt sent"
+            ),
+            timeoutMs = 14000
+        )
+
         if (successFound) {
             StatusLogEngine.updateLog("Prompt successfully initiated to customer phone!\n")
             AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = "DONE")))
-            delay(1000)
-
-            bringPochiPayToForeground(context)
+            delay(800)
 
             return BusinessStkResult(
                 success = true,
@@ -197,23 +305,123 @@ object BusinessStkAutomation {
             )
         }
 
-        // Check if an error screen appeared (e.g. Retry, Failed, Insufficient)
-        val currentStrings = getScreenStrings()
-        val errorItem = currentStrings.firstOrNull {
-            it.contains("fail", ignoreCase = true) ||
-            it.contains("error", ignoreCase = true) ||
-            it.contains("retry", ignoreCase = true)
+        // Check for error screen / failure on final confirmation
+        val finalErr = checkForInterruptingDialogOrError() ?: run {
+            val currStrings = getScreenStrings()
+            currStrings.firstOrNull {
+                it.contains("fail", ignoreCase = true) ||
+                it.contains("error", ignoreCase = true) ||
+                it.contains("retry", ignoreCase = true) ||
+                it.contains("timed out", ignoreCase = true)
+            } ?: "Prompt initiation did not confirm within 14 seconds."
         }
-        val err = errorItem ?: "Prompt initiation did not confirm in time."
-        StatusLogEngine.updateLog("Error: $err\n")
-        bringPochiPayToForeground(context)
+
+        StatusLogEngine.updateLog("Dispatch Error: $finalErr\n")
+        dismissAnyInterruptingDialog()
 
         return BusinessStkResult(
             success = false,
             customerName = extractedCustomerName,
-            errorMessage = err,
+            errorMessage = finalErr,
             requestId = requestId
         )
+    }
+
+    private suspend fun normalizeToDashboardOrPin(context: Context, targetPackage: String, mpesaPin: String) {
+        // Dismiss any unexpected dialogs that might be hanging from previous runs
+        dismissAnyInterruptingDialog()
+
+        // Check if we are already on Dashboard ("NEW SALE") or PIN screen
+        val isHome = checkScreenContains(listOf("NEW SALE", "New Sale"), timeoutMs = 1500)
+        val isPin = isPinScreenVisible()
+
+        if (isHome || isPin) {
+            return // Clean state
+        }
+
+        // Try pressing back up to 3 times to pop out of lingering sub-screens
+        StatusLogEngine.updateLog("Normalizing screen state to dashboard...\n")
+        for (i in 1..3) {
+            if (checkScreenContains(listOf("NEW SALE", "New Sale"), timeoutMs = 800) || isPinScreenVisible()) {
+                break
+            }
+            AutomationEngine.sendCommand(AutomationCommand.PressBack)
+            delay(600)
+            dismissAnyInterruptingDialog()
+        }
+    }
+
+    private suspend fun isPinScreenVisible(): Boolean {
+        return checkScreenContains(listOf("ENTER PIN", "OPERATOR ID", "CHANGE PIN"), timeoutMs = 1500)
+    }
+
+    private suspend fun handlePinEntry(mpesaPin: String): Boolean {
+        if (mpesaPin.length != 4) {
+            StatusLogEngine.updateLog("Error: 4-digit M-PESA Business PIN is required.\n")
+            return false
+        }
+        StatusLogEngine.updateLog("Entering 4-digit PIN...\n")
+        for (digit in mpesaPin) {
+            AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = digit.toString())))
+            delay(180)
+        }
+        delay(1800)
+        return true
+    }
+
+    private suspend fun checkForInterruptingDialogOrError(): String? {
+        val strings = getScreenStrings()
+        val errorSignals = listOf(
+            "not registered",
+            "not an active",
+            "invalid phone",
+            "invalid number",
+            "exceeds",
+            "limit",
+            "try again",
+            "connection error",
+            "timed out",
+            "service unavailable",
+            "developer options",
+            "security alert",
+            "cannot be completed",
+            "failed",
+            "cancelled",
+            "insufficient"
+        )
+
+        for (sig in errorSignals) {
+            val match = strings.firstOrNull { it.contains(sig, ignoreCase = true) }
+            if (match != null) {
+                return match
+            }
+        }
+        return null
+    }
+
+    private suspend fun dismissAnyInterruptingDialog() {
+        val dismissLabels = listOf("DISMISS", "NOT NOW", "CANCEL", "CLOSE", "LATER", "OK", "GOT IT", "DONE")
+        for (label in dismissLabels) {
+            val found = checkScreenContains(listOf(label), timeoutMs = 500)
+            if (found) {
+                Timber.d("Dismissing interrupting dialog via '$label'")
+                AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(textContains = label)))
+                delay(600)
+                return
+            }
+        }
+    }
+
+    private fun suppressDeveloperOptions(context: Context) {
+        try {
+            android.provider.Settings.Global.putInt(
+                context.contentResolver,
+                android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                0
+            )
+        } catch (t: Throwable) {
+            Timber.d("Could not set DEVELOPMENT_SETTINGS_ENABLED: ${t.message}")
+        }
     }
 
     private fun bringPochiPayToForeground(context: Context) {
@@ -229,7 +437,7 @@ object BusinessStkAutomation {
         }
     }
 
-    private fun formatKenyanPhone(raw: String): String {
+    fun formatKenyanPhone(raw: String): String {
         val digits = raw.filter { it.isDigit() }
         return when {
             digits.startsWith("254") && digits.length == 12 -> "0" + digits.substring(3)
@@ -269,7 +477,7 @@ object BusinessStkAutomation {
                     return true
                 }
             }
-            delay(500)
+            delay(400)
         }
         return false
     }
