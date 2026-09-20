@@ -34,3 +34,8 @@ Thumbs.db
 # Signing & Credentials (protect release keys)
 *.keystore
 signing.properties
+
+# Vercel deployment cache & environment files
+.vercel
+.env*.local
+

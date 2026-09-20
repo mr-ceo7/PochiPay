@@ -33,6 +33,17 @@ object BusinessStkAutomation {
 
         StatusLogEngine.updateLog("Starting Business STK Push for $phone, Amount: KES $amount (Target: $targetPackage)\n")
 
+        // Ensure developer options check does not trigger Safaricom Security Alert (if WRITE_SECURE_SETTINGS is granted)
+        try {
+            android.provider.Settings.Global.putInt(
+                context.contentResolver,
+                android.provider.Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+                0
+            )
+        } catch (t: Throwable) {
+            Timber.d("Could not set DEVELOPMENT_SETTINGS_ENABLED: ${t.message}")
+        }
+
         // 1. Launch M-PESA for Business App
         val launchIntent = context.packageManager.getLaunchIntentForPackage(targetPackage)
         if (launchIntent == null) {
@@ -113,16 +124,6 @@ object BusinessStkAutomation {
         val cleanPhone = formatKenyanPhone(phone)
         StatusLogEngine.updateLog("Entering customer phone: $cleanPhone\n")
 
-        // Try paste first
-        AutomationEngine.sendCommand(
-            AutomationCommand.Paste(
-                Selector(hint = "ENTER CUSTOMER PHONE NUMBER", textContains = "CUSTOMER PHONE NUMBER"),
-                cleanPhone
-            )
-        )
-        delay(500)
-
-        // Also enter via numeric keypad if needed
         for (digit in cleanPhone) {
             AutomationEngine.sendCommand(AutomationCommand.Tap(Selector(text = digit.toString())))
             delay(150)

@@ -121,6 +121,28 @@ class PaymentMonitorService : Service() {
                     if (args.isNotEmpty()) {
                         val data = args[0] as? JSONObject
                         Timber.d("Event Data: $data")
+                        if (data != null) {
+                            val ref = data.optString("reference", data.optString("code", "")).trim()
+                            val amt = data.optDouble("amount", 0.0)
+                            if (ref.isNotEmpty()) {
+                                serviceScope.launch {
+                                    try {
+                                        val repository = Repository.getInstance(applicationContext)
+                                        val isValid = repository.checkTransaction(ref, if (amt > 0) amt.toString() else "")
+                                        val resultJson = JSONObject().apply {
+                                            put("reference", ref)
+                                            put("verified", isValid)
+                                            put("amount", amt)
+                                            put("timestamp", System.currentTimeMillis())
+                                        }
+                                        socket?.emit("verification_result", resultJson)
+                                        Timber.i("SocketIO: Emitted verification_result: $resultJson")
+                                    } catch (e: Exception) {
+                                        Timber.e(e, "Error executing socket verification")
+                                    }
+                                }
+                            }
+                        }
                     }
                     checkPendingVerifications()
                 }

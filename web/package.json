@@ -1,0 +1,12 @@
+{
+  "name": "pochipay-console",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PochiPay Dual API Testing Console for Business STK Push and SMS Payment Verification",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": ["mpesa", "stk-push", "payment-gateway", "pochipay"],
+  "author": "mr-ceo7",
+  "license": "MIT"
+}

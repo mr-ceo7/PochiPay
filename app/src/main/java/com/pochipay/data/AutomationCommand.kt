@@ -21,5 +21,6 @@ sealed class AutomationCommand {
             val message: String,
             val isUser: Boolean = true
     ) : AutomationCommand()
+    object PressBack : AutomationCommand()
     object Stop : AutomationCommand()
 }

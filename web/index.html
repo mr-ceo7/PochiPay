@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#0a0b0d] text-[#e1e4e8]">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PochiPay Gateway Console — Dual API Suite</title>
+  <meta name="description" content="Test console for PochiPay Business STK Push and SMS Payment Verification APIs">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            bg: '#0a0b0d',
+            surface: '#111317',
+            surfaceHover: '#16191f',
+            border: '#1f242c',
+            borderLight: '#2b323d',
+            accent: '#059669',
+            accentHover: '#047857',
+            amber: '#d97706',
+            danger: '#dc2626',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="min-h-full font-sans antialiased bg-[#0a0b0d] text-[#e1e4e8] flex flex-col selection:bg-[#059669] selection:text-white">
+
+  <!-- Top Global Bar -->
+  <header class="border-b border-[#1f242c] bg-[#111317]/95 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded bg-[#059669] flex items-center justify-center font-mono font-bold text-white text-sm">
+          P
+        </div>
+        <div>
+          <h1 class="text-sm font-semibold tracking-tight text-white uppercase font-mono">PochiPay Gateway Console</h1>
+          <p class="text-[11px] font-mono text-[#8b949e]">DUAL API TESTING SUITE • STK PUSH & SMS VERIFICATION</p>
+        </div>
+      </div>
+
+      <!-- Server Connection Form -->
+      <form id="connectionForm" class="flex flex-wrap items-center gap-2">
+        <div class="flex items-center border border-[#1f242c] rounded bg-[#0a0b0d] px-3 py-1.5 focus-within:border-[#059669] transition">
+          <label for="serverUrl" class="text-[10px] font-mono uppercase tracking-widest text-[#8b949e] mr-2">SERVER:</label>
+          <input 
+            type="url" 
+            id="serverUrl" 
+            name="serverUrl"
+            value="https://uon-smart-backend.onrender.com" 
+            required
+            class="bg-transparent text-xs font-mono text-white focus:outline-none w-56 sm:w-72"
+            placeholder="https://..."
+            autocomplete="url"
+          >
+        </div>
+        <button 
+          type="submit" 
+          id="connectBtn" 
+          class="text-xs font-mono font-semibold uppercase tracking-wider px-3.5 py-2 rounded bg-[#1f242c] hover:bg-[#2b323d] text-white transition border border-[#2b323d]"
+        >
+          CONNECT
+        </button>
+
+        <div class="flex items-center gap-2 pl-2 border-l border-[#1f242c]">
+          <span id="connectionBadge" class="text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">
+            DISCONNECTED
+          </span>
+          <span id="socketIdBadge" class="hidden text-[10px] font-mono text-[#8b949e] truncate max-w-[100px]"></span>
+        </div>
+      </form>
+    </div>
+  </header>
+
+  <!-- Sub-Header: Mode & Environment Configuration -->
+  <div class="border-b border-[#1f242c] bg-[#0c0e12] px-4 sm:px-6 lg:px-8 py-2">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+      <div class="flex items-center gap-4">
+        <span class="text-[#8b949e] text-[11px] uppercase tracking-wider">TARGET APP:</span>
+        <code class="px-2 py-0.5 rounded bg-[#16191f] border border-[#1f242c] text-[#34d399] text-[11px]">
+          com.safaricom.mpesa.orgapp
+        </code>
+      </div>
+
+      <!-- Mock Simulator Toggle -->
+      <div class="flex items-center gap-2">
+        <label for="mockSimulatorToggle" class="text-[11px] uppercase tracking-wider text-[#8b949e] cursor-pointer">
+          SIMULATE PHONE RESPONSES:
+        </label>
+        <input 
+          type="checkbox" 
+          id="mockSimulatorToggle" 
+          class="w-4 h-4 rounded border-[#1f242c] bg-[#16191f] text-[#059669] focus:ring-0 focus:ring-offset-0 cursor-pointer"
+        >
+        <span id="mockIndicator" class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">OFF</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Dual API Section (Side by Side) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <!-- ============================================== -->
+      <!-- API 1: BUSINESS STK PUSH TESTER               -->
+      <!-- ============================================== -->
+      <section class="border border-[#1f242c] rounded bg-[#111317] flex flex-col">
+        <div class="px-5 py-4 border-b border-[#1f242c] flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#34d399]">API 01</span>
+            <h2 class="text-base font-bold tracking-tight text-white uppercase font-mono">Business STK Push Engine</h2>
+            <p class="text-xs text-[#8b949e] mt-0.5">Triggers on-device in-app STK prompt via Safaricom Business app</p>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">
+            SOCKET / REST
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between space-y-5">
+          <form id="stkPushForm" class="space-y-4">
+            
+            <!-- Protocol Toggle -->
+            <div>
+              <fieldset>
+                <legend class="text-[11px] font-mono uppercase tracking-wider text-[#8b949e] mb-1.5">DISPATCH PROTOCOL</legend>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center justify-center gap-2 p-2 rounded border border-[#1f242c] bg-[#0a0b0d] hover:bg-[#16191f] cursor-pointer text-xs font-mono">
+                    <input type="radio" name="stkProtocol" value="socket" checked class="text-[#059669] focus:ring-0">
+                    <span>Socket.io Event</span>
+                  </label>
+                  <label class="flex items-center justify-center gap-2 p-2 rounded border border-[#1f242c] bg-[#0a0b0d] hover:bg-[#16191f] cursor-pointer text-xs font-mono">
+                    <input type="radio" name="stkProtocol" value="rest" class="text-[#059669] focus:ring-0">
+                    <span>REST Endpoint</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- Phone Input -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="stkPhone" class="text-xs font-mono uppercase text-[#e1e4e8]">Customer Phone</label>
+                <span class="text-[10px] font-mono text-[#8b949e]">FORMAT: 07XXXXXXXX OR 254XXXXXXXX</span>
+              </div>
+              <input 
+                type="tel" 
+                id="stkPhone" 
+                name="stkPhone"
+                value="0746957502" 
+                required 
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="0746957502"
+                class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded px-3 py-2 text-sm font-mono text-white focus:outline-none transition"
+              >
+            </div>
+
+            <!-- Amount Input & Quick Chips -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="stkAmount" class="text-xs font-mono uppercase text-[#e1e4e8]">Amount (KES)</label>
+                <span class="text-[10px] font-mono text-[#8b949e]">MIN: KES 1.00</span>
+              </div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-xs font-mono text-[#8b949e]">KES</span>
+                <input 
+                  type="number" 
+                  id="stkAmount" 
+                  name="stkAmount"
+                  value="1.00" 
+                  min="1" 
+                  step="0.01" 
+                  required 
+                  class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded pl-12 pr-3 py-2 text-sm font-mono text-white focus:outline-none transition"
+                >
+              </div>
+              <!-- Quick Chips -->
+              <div class="flex items-center gap-2 mt-2">
+                <button type="button" class="amount-chip text-[11px] font-mono px-2 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-amount="1">1</button>
+                <button type="button" class="amount-chip text-[11px] font-mono px-2 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-amount="10">10</button>
+                <button type="button" class="amount-chip text-[11px] font-mono px-2 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-amount="50">50</button>
+                <button type="button" class="amount-chip text-[11px] font-mono px-2 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-amount="100">100</button>
+                <button type="button" class="amount-chip text-[11px] font-mono px-2 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-amount="1500">1,500</button>
+              </div>
+            </div>
+
+            <!-- Reference & Request ID -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="stkReference" class="text-xs font-mono uppercase text-[#e1e4e8] block mb-1">Reference Code</label>
+                <input 
+                  type="text" 
+                  id="stkReference" 
+                  name="stkReference"
+                  value="POCHI-01" 
+                  required 
+                  class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded px-3 py-2 text-xs font-mono text-white focus:outline-none transition uppercase"
+                >
+              </div>
+              <div>
+                <label for="stkRequestId" class="text-xs font-mono uppercase text-[#e1e4e8] block mb-1">Request ID (Auto)</label>
+                <input 
+                  type="text" 
+                  id="stkRequestId" 
+                  name="stkRequestId"
+                  placeholder="Auto-generated" 
+                  class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded px-3 py-2 text-xs font-mono text-[#8b949e] focus:outline-none transition"
+                >
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              type="submit" 
+              id="stkSubmitBtn" 
+              class="w-full py-2.5 px-4 rounded bg-[#059669] hover:bg-[#047857] text-white font-mono font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm"
+            >
+              <span id="stkBtnText">DISPATCH STK PROMPT</span>
+              <span id="stkBtnSpinner" class="hidden animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
+            </button>
+          </form>
+
+          <!-- STK Push Result Display -->
+          <div id="stkResultBox" class="border border-[#1f242c] rounded bg-[#0a0b0d] p-4 text-xs font-mono space-y-2.5">
+            <div class="flex items-center justify-between border-b border-[#1f242c] pb-2">
+              <span class="text-[10px] uppercase text-[#8b949e]">DISPATCH STATUS</span>
+              <span id="stkStatusBadge" class="text-[10px] uppercase px-2 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">
+                AWAITING DISPATCH
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">CUSTOMER NAME:</span>
+                <span id="stkCustomerName" class="text-white font-semibold">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">ROUND-TRIP DURATION:</span>
+                <span id="stkDuration" class="text-white">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">REQUEST ID:</span>
+                <span id="stkResultReqId" class="text-[#8b949e] truncate block">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">ERROR DETAIL:</span>
+                <span id="stkErrorDetail" class="text-red-400">—</span>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-[#1f242c] flex justify-between items-center">
+              <button type="button" id="copyStkCurlBtn" class="text-[10px] font-mono uppercase text-[#8b949e] hover:text-white transition">
+                COPY CURL COMMAND
+              </button>
+              <span id="stkTimeAgo" class="text-[10px] text-[#8b949e]"></span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================== -->
+      <!-- API 2: PAYMENT VERIFICATION TESTER             -->
+      <!-- ============================================== -->
+      <section class="border border-[#1f242c] rounded bg-[#111317] flex flex-col">
+        <div class="px-5 py-4 border-b border-[#1f242c] flex items-center justify-between">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#34d399]">API 02</span>
+            <h2 class="text-base font-bold tracking-tight text-white uppercase font-mono">SMS Payment Verification</h2>
+            <p class="text-xs text-[#8b949e] mt-0.5">Queries local Room DB for matching M-PESA confirmation SMS</p>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">
+            SOCKET / REST
+          </span>
+        </div>
+
+        <div class="p-5 flex-1 flex flex-col justify-between space-y-5">
+          <form id="verifyForm" class="space-y-4">
+            
+            <!-- Protocol Toggle -->
+            <div>
+              <fieldset>
+                <legend class="text-[11px] font-mono uppercase tracking-wider text-[#8b949e] mb-1.5">QUERY PROTOCOL</legend>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="flex items-center justify-center gap-2 p-2 rounded border border-[#1f242c] bg-[#0a0b0d] hover:bg-[#16191f] cursor-pointer text-xs font-mono">
+                    <input type="radio" name="verifyProtocol" value="socket" checked class="text-[#059669] focus:ring-0">
+                    <span>Socket.io Event</span>
+                  </label>
+                  <label class="flex items-center justify-center gap-2 p-2 rounded border border-[#1f242c] bg-[#0a0b0d] hover:bg-[#16191f] cursor-pointer text-xs font-mono">
+                    <input type="radio" name="verifyProtocol" value="rest" class="text-[#059669] focus:ring-0">
+                    <span>REST Endpoint</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <!-- M-PESA Receipt Reference Input -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="verifyReference" class="text-xs font-mono uppercase text-[#e1e4e8]">M-PESA Reference Code</label>
+                <span class="text-[10px] font-mono text-[#8b949e]">EXAMPLE: UILJE6UFXH</span>
+              </div>
+              <input 
+                type="text" 
+                id="verifyReference" 
+                name="verifyReference"
+                value="UILJE6UFXH" 
+                required 
+                maxlength="12"
+                placeholder="UILJE6UFXH"
+                class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded px-3 py-2 text-sm font-mono text-white focus:outline-none transition uppercase tracking-wider"
+              >
+            </div>
+
+            <!-- Expected Amount Input -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="verifyAmount" class="text-xs font-mono uppercase text-[#e1e4e8]">Expected Amount (KES)</label>
+                <span class="text-[10px] font-mono text-[#8b949e]">FOR STRICT RECEIPT VALIDATION</span>
+              </div>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-xs font-mono text-[#8b949e]">KES</span>
+                <input 
+                  type="number" 
+                  id="verifyAmount" 
+                  name="verifyAmount"
+                  value="1.00" 
+                  min="1" 
+                  step="0.01" 
+                  required 
+                  class="w-full bg-[#0a0b0d] border border-[#1f242c] focus:border-[#059669] rounded pl-12 pr-3 py-2 text-sm font-mono text-white focus:outline-none transition"
+                >
+              </div>
+            </div>
+
+            <!-- Presets -->
+            <div>
+              <span class="text-[11px] font-mono uppercase tracking-wider text-[#8b949e] block mb-1.5">SAMPLE TEST PRESETS</span>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="verify-preset text-[11px] font-mono px-2.5 py-1 rounded bg-[#064e3b] border border-[#059669] text-[#34d399] hover:bg-[#047857] hover:text-white transition" data-ref="UILJE6UFXH" data-amt="1.00">
+                  UILJE6UFXH (KES 1.00 - Real Phone SMS)
+                </button>
+                <button type="button" class="verify-preset text-[11px] font-mono px-2.5 py-1 rounded bg-[#16191f] border border-[#1f242c] hover:border-[#34d399] transition text-[#8b949e] hover:text-white" data-ref="QA12BC34DE" data-amt="100.00">
+                  QA12BC34DE (100 KES)
+                </button>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              type="submit" 
+              id="verifySubmitBtn" 
+              class="w-full py-2.5 px-4 rounded bg-[#1f242c] hover:bg-[#2b323d] text-white font-mono font-bold text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 border border-[#2b323d] shadow-sm"
+            >
+              <span id="verifyBtnText">QUERY RECEIPT VERIFICATION</span>
+              <span id="verifyBtnSpinner" class="hidden animate-spin border-2 border-white border-t-transparent rounded-full w-4 h-4"></span>
+            </button>
+          </form>
+
+          <!-- Verification Result Display -->
+          <div id="verifyResultBox" class="border border-[#1f242c] rounded bg-[#0a0b0d] p-4 text-xs font-mono space-y-2.5">
+            <div class="flex items-center justify-between border-b border-[#1f242c] pb-2">
+              <span class="text-[10px] uppercase text-[#8b949e]">VERIFICATION STATUS</span>
+              <span id="verifyStatusBadge" class="text-[10px] uppercase px-2 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">
+                AWAITING QUERY
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">VERIFIED REFERENCE:</span>
+                <span id="verifyMatchedRef" class="text-white font-semibold">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">CONFIRMED AMOUNT:</span>
+                <span id="verifyMatchedAmt" class="text-white">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">SENDER PHONE:</span>
+                <span id="verifySenderPhone" class="text-white">—</span>
+              </div>
+              <div>
+                <span class="text-[#8b949e] block text-[10px] uppercase">SMS TIMESTAMP:</span>
+                <span id="verifyTimestamp" class="text-[#8b949e]">—</span>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-[#1f242c] flex justify-between items-center">
+              <button type="button" id="copyVerifyCurlBtn" class="text-[10px] font-mono uppercase text-[#8b949e] hover:text-white transition">
+                COPY CURL COMMAND
+              </button>
+              <span id="verifyTimeAgo" class="text-[10px] text-[#8b949e]"></span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============================================== -->
+    <!-- REAL-TIME CONSOLE & PACKET AUDIT LOG          -->
+    <!-- ============================================== -->
+    <section class="border border-[#1f242c] rounded bg-[#111317]">
+      <div class="px-5 py-3 border-b border-[#1f242c] flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <h3 class="text-xs font-bold font-mono uppercase tracking-wider text-white">Live Gateway Traffic & Audit Log</h3>
+          <span id="logCounter" class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#16191f] text-[#8b949e] border border-[#1f242c]">0 EVENTS</span>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <!-- Filter Tabs -->
+          <div class="flex items-center border border-[#1f242c] rounded bg-[#0a0b0d] p-0.5 text-[10px] font-mono">
+            <button type="button" class="filter-btn px-2 py-0.5 rounded bg-[#1f242c] text-white" data-filter="all">ALL</button>
+            <button type="button" class="filter-btn px-2 py-0.5 rounded text-[#8b949e] hover:text-white" data-filter="stk">STK PUSH</button>
+            <button type="button" class="filter-btn px-2 py-0.5 rounded text-[#8b949e] hover:text-white" data-filter="verify">VERIFY</button>
+            <button type="button" class="filter-btn px-2 py-0.5 rounded text-[#8b949e] hover:text-white" data-filter="system">SYSTEM</button>
+          </div>
+
+          <button 
+            type="button" 
+            id="clearLogsBtn" 
+            class="text-[10px] font-mono uppercase px-2.5 py-1 rounded bg-[#16191f] hover:bg-[#1f242c] text-[#8b949e] hover:text-white border border-[#1f242c] transition"
+          >
+            CLEAR
+          </button>
+        </div>
+      </div>
+
+      <!-- Console Window -->
+      <div id="consoleContainer" class="p-4 bg-[#0a0b0d] font-mono text-xs max-h-80 min-h-[160px] overflow-y-auto space-y-2">
+        <div class="text-[#8b949e] text-[11px] italic">
+          [Console initialized. Connect to the gateway server above or toggle device simulation to begin.]
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-[#1f242c] bg-[#111317] py-4 text-center text-xs font-mono text-[#8b949e]">
+    <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
+      <div>PochiPay (p-pay) • Developer Testing Gateway</div>
+      <div>Target App: <span class="text-white">com.safaricom.mpesa.orgapp</span></div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
