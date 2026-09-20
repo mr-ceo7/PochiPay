@@ -1,0 +1,119 @@
+GOAL (single sentence):
+Build a replacement Android messaging app (starting from an Empty Views Activity template) with standard messaging features plus an Automation fragment that launches another app, overlays a controllable automation UI using Accessibility features, performs preprogrammed UI interactions, extracts a name from the target app, combines it with a note, sends a local notification, and appends the combined note to the message list.
+
+TOP-LEVEL REQUIREMENTS:
+1. Use the existing Empty Views Activity project as the working directory. Do not change template type.
+2. Language: Kotlin. Use AndroidX / Jetpack components. Target latest SDK available.
+3. The resulting app must run on real physical Android devices.
+4. All permissions (Accessibility, overlay) must be explicitly requested with clear UX. No bypassing OS restrictions.
+5. Build in phases. After each phase produce:
+   - A runnable APK
+   - A test checklist
+   - Test results
+   Only proceed when all tests pass.
+
+SECURITY / PRIVACY REQUIREMENTS:
+- Automation must be explicit and user-initiated.
+- No stealth automation in background.
+- Provide a warning dialog before interacting with any third-party app.
+- Maintain transparency: show visible overlay controls and STOP button.
+
+FEATURES:
+
+1. Messaging Core (Fragments + Room DB)
+- Conversations list
+- Conversation detail
+- Persisted messages in Room DB
+- Ability to append a new message manually
+
+2. Automation Fragment (UI & Functionality)
+UI:
+- Spinner with Task1, Task2, Task3
+- Text input
+- Initiate button
+- Status log area
+
+Automation Flow:
+1. Validate user input.
+2. Request missing permissions (Accessibility / overlay) with explanation screens.
+3. Launch the target app (default package configurable in Settings).
+4. Show a visible overlay controller with:
+   - Current step
+   - Logs
+   - STOP button
+5. Use an AccessibilityService (enabled by the user) to:
+   - Perform pre-programmed UI interactions (clicks, swipes)
+   - Extract a name from screen content (AccessibilityNode first, OCR optional fallback)
+6. Combine extracted name with template note.
+7. Send local notification.
+8. Insert combined note into messaging DB.
+9. Show success/failure in Automation fragment log.
+
+IMPLEMENTATION PHASES:
+
+PHASE 0 — Set up architecture
+- Create Activity + Navigation graph
+- Fragments for messaging/automation
+- Add Timber logging
+Deliverables: APK launches, empty fragments work.
+Tests: Navigation, no crashes.
+
+PHASE 1 — Messaging Core
+- Room entities: Message, Conversation
+- DAOs & Repository
+- Conversation list + detail fragments
+- Ability to add messages
+Deliverable: APK with stable messaging UI.
+Tests: Create/view messages, persistence verified.
+
+PHASE 2 — Automation UI + Permissions
+- Build Automation fragment UI
+- Settings screen for note template + target package
+- Permission flows: Accessibility, overlay
+Deliverable: Working UI + permission prompts
+Tests: Spinner works, Initiate validates input, permission screens open correctly.
+
+PHASE 3 — AccessibilityService + Automation Engine
+- Build AccessibilityService skeleton
+- Command interface between fragment and service
+- Visible overlay with STOP
+- Deterministic tap/swipe actions
+- Logging
+Deliverable: APK where automation executes on a test app
+Tests: Steps execute, STOP works, logs report each action.
+
+PHASE 4 — Extraction + Notification + DB Insert
+- Extract name from node tree
+- Create combined message
+- NotificationManager integration
+- Append to Room DB
+Deliverable: End-to-end working automation
+Tests: Extraction works, notification appears, DB entry added.
+
+PHASE 5 — Testing & Hardening
+- Add unit tests + Espresso tests
+- Improve error handling
+- Add in-app documentation & permission explanations
+- Sign release build
+Deliverable: Final stable APK
+Tests: All automated/manual tests pass
+
+LOGGING / DEBUGGING:
+- Use Timber for logs
+- In-app debug console shows automation actions
+- Structured JSON-style step logs
+
+DELIVERABLES FOR EACH PHASE:
+1. Code commits for that phase
+2. Runnable APK
+3. Test checklist with pass/fail results
+4. Summary report
+
+SAFETY / ETHICAL GUARDRAILS FOR AGENT:
+- Never automate without explicit user trigger.
+- Show warnings before interacting with third-party apps.
+- Deny or re-confirm automation on sensitive apps (banking, secure apps).
+- Keep all processing on device.
+
+FINAL INSTRUCTION FOR THE AI AGENT:
+Use the working directory (Empty Views Activity) to build the described messaging + automation app. Follow the phased implementation strictly, produce an APK after each phase with checklist results, integrate verbose logging, ensure all permissions are user-approved, show a visible overlay during automation, and refuse stealth/bypass behavior. Ask for clarification whenever something is uncertain.

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spacing - Increased for tablets -->
+    <dimen name="spacing_small">12dp</dimen>
+    <dimen name="spacing_medium">24dp</dimen>
+    <dimen name="spacing_large">32dp</dimen>
+    <dimen name="spacing_xlarge">48dp</dimen>
+    <dimen name="spacing_xxlarge">80dp</dimen>
+
+    <!-- Text Sizes - Increased for tablets -->
+    <dimen name="text_size_small">16sp</dimen>
+    <dimen name="text_size_medium">18sp</dimen>
+    <dimen name="text_size_large">22sp</dimen>
+    <dimen name="text_size_xlarge">24sp</dimen>
+    <dimen name="text_size_title">32sp</dimen>
+    
+    <!-- Component Sizes -->
+    <dimen name="button_height">56dp</dimen>
+    <dimen name="progress_bar_height">6dp</dimen>
+</resources>

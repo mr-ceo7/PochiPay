@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <EditTextPreference
+        app:key="mpesa_pin"
+        app:title="@string/mpesa_pin_title"
+        app:summary="@string/mpesa_pin_summary"
+        app:defaultValue=""
+        app:dialogTitle="Enter M-PESA Business PIN" />
+
+    <EditTextPreference
+        app:key="target_package"
+        app:title="Target Business App"
+        app:summary="Package name of the M-PESA Business app"
+        app:defaultValue="com.safaricom.mpesa.orgapp"
+        app:dialogTitle="Target App Package" />
+
+    <EditTextPreference
+        app:key="custom_server_url"
+        app:title="Central Server URL"
+        app:summary="Override the server URL (e.g. https://uon-smart-backend.onrender.com)"
+        app:defaultValue="" />
+
+    <Preference
+        app:key="set_default_sms"
+        app:title="Set as Default SMS App"
+        app:summary="Make PochiPay your default messaging app for receiving SMS." />
+
+    <Preference
+        app:key="view_logs"
+        app:title="View Live Logs"
+        app:summary="Monitor app logs in real-time" />
+
+    <Preference
+        app:key="diagnostics"
+        app:title="Diagnostics"
+        app:summary="Show manifest intent-filters and permission status for debugging default SMS role" />
+
+</PreferenceScreen>

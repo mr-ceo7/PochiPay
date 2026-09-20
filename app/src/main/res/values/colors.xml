@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Modern Dark Theme Colors -->
+    <color name="dark_bg_primary">#0E0E0E</color> <!-- Deep Black -->
+    <color name="dark_bg_secondary">#1F1F1F</color> <!-- Dark Gray Surface -->
+    <color name="dark_bg_tertiary">#2C2C2C</color>
+    <color name="accent_blue">#0B57D0</color> <!-- Vibrant Blue -->
+    <color name="accent_green">#4ECB71</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#E3E3E3</color>
+    <color name="divider">#2C2C2C</color>
+
+    <!-- Message Bubble Colors -->
+    <color name="bubble_sent">#0B57D0</color>
+    <color name="bubble_received">#1F1F1F</color>
+    <color name="bubble_text_sent">#FFFFFF</color>
+    <color name="bubble_text_received">#FFFFFF</color>
+    <color name="purple_500">#9C27B0</color>
+    <color name="pink_500">#E91E63</color>
+    <color name="orange_light">@android:color/holo_orange_light</color>
+</resources>

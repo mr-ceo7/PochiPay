@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/registeringFragment">
+
+    <fragment
+        android:id="@+id/registeringFragment"
+        android:name="com.pochipay.ui.startup.RegisteringFragment"
+        android:label="Registering"
+        tools:layout="@layout/fragment_registering" >
+        <action
+            android:id="@+id/action_registeringFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/registeringFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_registeringFragment_to_authorizationFragment"
+            app:destination="@id/authorizationFragment"
+            app:popUpTo="@id/registeringFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_registeringFragment_to_updatingFragment"
+            app:destination="@id/updatingFragment"
+            app:popUpTo="@id/registeringFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/updatingFragment"
+        android:name="com.pochipay.ui.startup.UpdatingFragment"
+        android:label="Updating"
+        tools:layout="@layout/fragment_updating" />
+
+    <fragment
+        android:id="@+id/authorizationFragment"
+        android:name="com.pochipay.ui.startup.AuthorizationFragment"
+        android:label="Authorization"
+        tools:layout="@layout/fragment_authorization" >
+        <action
+            android:id="@+id/action_authorizationFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/authorizationFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.pochipay.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home" >
+        <action
+            android:id="@+id/action_homeFragment_to_conversationListFragment"
+            app:destination="@id/conversationListFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_automationFragment"
+            app:destination="@id/automationFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/conversationListFragment"
+        android:name="com.pochipay.ui.messaging.ConversationListFragment"
+        android:label="Conversations"
+        tools:layout="@layout/fragment_conversation_list" >
+        <action
+            android:id="@+id/action_conversationListFragment_to_conversationDetailFragment"
+            app:destination="@id/conversationDetailFragment" />
+        <action
+            android:id="@+id/action_conversationListFragment_to_automationFragment"
+            app:destination="@id/automationFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/conversationDetailFragment"
+        android:name="com.pochipay.ui.messaging.ConversationDetailFragment"
+        android:label="Conversation"
+        tools:layout="@layout/fragment_conversation_detail" >
+        <argument
+            android:name="conversationId"
+            app:argType="long" />
+    </fragment>
+    <fragment
+        android:id="@+id/automationFragment"
+        android:name="com.pochipay.AutomationFragment"
+        android:label="STK Console"
+        tools:layout="@layout/fragment_automation" >
+        <action
+            android:id="@+id/action_automationFragment_to_permissionExplanationFragment"
+            app:destination="@id/permissionExplanationFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/permissionExplanationFragment"
+        android:name="com.pochipay.ui.PermissionExplanationFragment"
+        android:label="Permissions"
+        tools:layout="@layout/fragment_permission_explanation" />
+</navigation>

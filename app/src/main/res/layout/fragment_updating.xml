@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_bg_primary">
+
+    <ProgressBar
+        android:id="@+id/update_progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="16dp"
+        android:max="100"
+        android:progress="0"
+        app:layout_constraintBottom_toTopOf="@+id/update_status_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/update_status_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Updating..."
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/install_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Install Update"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/update_status_text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp"/>
+
+    <TextView
+        android:id="@+id/permission_error_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Permission needed to install updates."
+        android:textColor="@android:color/holo_orange_light"
+        android:textSize="16sp"
+        android:visibility="gone"
+        android:textAlignment="center"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toBottomOf="@id/update_status_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="16dp"
+        tools:visibility="visible"/>
+
+    <Button
+        android:id="@+id/permission_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Grant Permission"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/permission_error_text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="8dp"
+        tools:visibility="visible"/>
+
+    <TextView
+        android:id="@+id/updatenote"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="55dp"
+        android:layout_marginBottom="24dp"
+        android:text="If update fails, download the app again!"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

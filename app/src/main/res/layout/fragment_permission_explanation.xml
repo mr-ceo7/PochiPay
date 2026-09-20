@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_bg_primary"
+    android:padding="@dimen/spacing_medium">
+
+    <TextView
+        android:id="@+id/title_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Permissions Required"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/text_size_title"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/subtitle_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:text="To automate tasks, NTFY5 needs the following permissions enabled."
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/text_size_medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/title_text" />
+
+    <!-- Accessibility Permission Card -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/card_accessibility"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_large"
+        android:background="@drawable/bg_card_outlined"
+        android:padding="@dimen/spacing_medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/subtitle_text">
+
+        <TextView
+            android:id="@+id/accessibility_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Accessibility Service"
+            android:textColor="@color/accent_blue"
+            android:textSize="@dimen/text_size_large"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/accessibility_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Not Granted"
+            android:textColor="@color/pink_500"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/accessibility_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="Required to interact with other apps, perform taps, and read screen content for automation."
+            android:textColor="@color/text_secondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/accessibility_title" />
+
+        <Button
+            android:id="@+id/btn_grant_accessibility"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="Enable Service"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/accessibility_desc" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Overlay Permission Card -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/card_overlay"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_medium"
+        android:background="@drawable/bg_card_outlined"
+        android:padding="@dimen/spacing_medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/card_accessibility">
+
+        <TextView
+            android:id="@+id/overlay_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Display Over Other Apps"
+            android:textColor="@color/accent_green"
+            android:textSize="@dimen/text_size_large"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/overlay_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Not Granted"
+            android:textColor="@color/pink_500"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/overlay_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="Required to show the control overlay and stop button on top of other apps."
+            android:textColor="@color/text_secondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/overlay_title" />
+
+        <Button
+            android:id="@+id/btn_grant_overlay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="Allow Overlay"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/overlay_desc" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Standard Permissions Card -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/card_standard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_medium"
+        android:background="@drawable/bg_card_outlined"
+        android:padding="@dimen/spacing_medium"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/card_overlay">
+
+        <TextView
+            android:id="@+id/standard_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="App Permissions"
+            android:textColor="@color/accent_blue"
+            android:textSize="@dimen/text_size_large"
+            android:textStyle="bold"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/standard_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Not Granted"
+            android:textColor="@color/pink_500"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/standard_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:text="SMS, Contacts, and Notification permissions are needed for core functionality."
+            android:textColor="@color/text_secondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/standard_title" />
+
+        <Button
+            android:id="@+id/btn_grant_standard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:text="Grant Permissions"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/standard_desc" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <Button
+        android:id="@+id/btn_continue"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/button_height"
+        android:layout_marginTop="@dimen/spacing_xlarge"
+        android:text="Continue"
+        android:enabled="false"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/card_standard"
+        app:layout_constraintVertical_bias="1.0" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

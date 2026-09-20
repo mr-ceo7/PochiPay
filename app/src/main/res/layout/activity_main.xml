@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/dark_bg_primary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/nav_host_fragment"
+        android:name="androidx.navigation.fragment.NavHostFragment"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:defaultNavHost="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:navGraph="@navigation/nav_graph" />
+
+    <!-- Status Indicators Overlay -->
+    <LinearLayout
+        android:id="@+id/status_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingEnd="16dp"
+        android:elevation="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/toolbar"
+        app:layout_constraintBottom_toBottomOf="@id/toolbar">
+
+        <!-- Connection: Green Dot -->
+        <View
+            android:id="@+id/indicator_connection"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/indicator_dot_red"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Manual Connect Button -->
+        <ImageButton
+            android:id="@+id/btn_manual_connect"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_sync" 
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Connect"
+            app:tint="@color/white"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Processing: Loading Icon (Default GONE) -->
+        <ProgressBar
+            android:id="@+id/indicator_processing"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp" />
+            
+        <!-- Done: Check Icon (Default GONE) -->
+        <ImageView
+            android:id="@+id/indicator_success"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_check_circle"
+            android:visibility="gone"
+            app:tint="#4CAF50" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
