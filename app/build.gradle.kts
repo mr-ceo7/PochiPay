@@ -22,11 +22,11 @@ android {
     signingConfigs {
         create("release") {
             val keystoreFile = file("keystore.jks")
-            val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
-            val keyAliasName = System.getenv("KEY_ALIAS")
-            val keyPasswordVal = System.getenv("KEY_PASSWORD")
+            val keystorePassword = System.getenv("KEYSTORE_PASSWORD") ?: "password"
+            val keyAliasName = System.getenv("KEY_ALIAS") ?: "ntfy5"
+            val keyPasswordVal = System.getenv("KEY_PASSWORD") ?: "password"
 
-            if (keystoreFile.exists() && keystoreFile.length() > 0 && !keystorePassword.isNullOrEmpty()) {
+            if (keystoreFile.exists() && keystoreFile.length() > 0) {
                 storeFile = keystoreFile
                 storePassword = keystorePassword
                 keyAlias = keyAliasName
