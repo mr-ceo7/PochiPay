@@ -154,6 +154,33 @@ class StartupViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun checkForUpdate() {
         try {
             Timber.d("Checking for app updates...")
+
+            // 1. Check GitHub Releases first
+            val gitHubUpdate = com.pochipay.update.GitHubUpdateChecker.checkForUpdate(
+                currentVersionCode = BuildConfig.VERSION_CODE,
+                currentVersionName = BuildConfig.VERSION_NAME
+            )
+
+            if (gitHubUpdate != null) {
+                Timber.i("GitHub update available: ${gitHubUpdate.versionName}")
+                val cachedUpdate = UpdateCacheManager.getCachedUpdate(
+                    getApplication(),
+                    gitHubUpdate.versionName
+                )
+                if (cachedUpdate != null) {
+                    Timber.i("Update v${gitHubUpdate.versionName} found in cache, skipping download")
+                    _startupState.value = StartupState.UpdateDownloadComplete(0L)
+                    currentDownloadId = -1L
+                } else {
+                    _startupState.value = StartupState.UpdateAvailable(
+                        gitHubUpdate.versionName,
+                        gitHubUpdate.downloadUrl
+                    )
+                }
+                return
+            }
+
+            // 2. Fall back to backend server API
             val response =
                     apiService.checkUpdate(
                             CheckUpdateRequest(version_code = BuildConfig.VERSION_CODE)

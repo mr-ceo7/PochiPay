@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
 
         // Start the checks
         startupViewModel.beginStartupChecks()
+        com.pochipay.update.GitHubUpdateChecker.schedulePeriodicChecks(applicationContext)
 
         // Handle bubble intent if launched from bubble
         handleBubbleIntent(intent)

@@ -3,4 +3,13 @@
     <external-cache-path
         name="update_apk"
         path="." />
+    <cache-path
+        name="internal_cache"
+        path="." />
+    <external-files-path
+        name="external_files"
+        path="." />
+    <files-path
+        name="internal_files"
+        path="." />
 </paths>

@@ -1,0 +1,54 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Prepare APK Asset
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          APK_SRC=$(find . -path '*/release/*.apk' -o -name '*release*.apk' | head -1)
+          if [ -z "$APK_SRC" ]; then
+            echo "Error: No APK found!"
+            exit 1
+          fi
+          echo "Found APK at $APK_SRC"
+          cp "$APK_SRC" "PochiPay-${VERSION}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: PochiPay-*.apk

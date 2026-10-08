@@ -1,6 +1,12 @@
-# PochiPay (p-pay)
+# 💳 PochiPay (p-pay)
 
-Android payment automation bridge and verification gateway. PochiPay bridges central backend servers to on-device M-PESA workflows through two subsystems:
+> **Android payment automation bridge and verification gateway.**
+
+[![Release](https://img.shields.io/github/v/release/mr-ceo7/PochiPay?style=flat-square&color=blue)](https://github.com/mr-ceo7/PochiPay/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/mr-ceo7/PochiPay/release-apk.yml?style=flat-square)](https://github.com/mr-ceo7/PochiPay/actions)
+[![Platform](https://img.shields.io/badge/platform-Android-green?style=flat-square)](#)
+
+PochiPay bridges central backend servers to on-device M-PESA workflows through two subsystems:
 
 1. **Business STK Push Automation Engine:** Dispatches customer STK prompts programmatically via Android Accessibility Service interactions with the Safaricom M-PESA for Business application (`com.safaricom.mpesa.orgapp`).
 2. **SMS Payment Verification Bridge:** Ingests, parses, and stores incoming M-PESA confirmation SMS messages in a local Room database, validating transaction references and amounts on demand.
@@ -157,6 +163,30 @@ Response event from PochiPay: `verification_result`
     "amount": 1500.0
   }
   ```
+
+---
+
+## Auto-Update System
+
+PochiPay includes an automatic update mechanism powered by GitHub Releases and Android's `DownloadManager`.
+
+### How It Works
+
+1. **Startup Check:** On app launch, PochiPay queries the [GitHub Releases API](https://api.github.com/repos/mr-ceo7/PochiPay/releases/latest) for the latest release.
+2. **Periodic Checks:** A background WorkManager task periodically checks for updates every 6 hours.
+3. **Background Download:** If a newer release is detected (higher version code), the APK is downloaded via `DownloadManager`.
+4. **Installer Launch:** When download finishes, the Android package installer is launched automatically.
+5. **Fallback:** If GitHub Releases is unreachable or has no update, it seamlessly falls back to the central backend update endpoint.
+
+### Publishing an Update
+
+1. Bump `versionCode` and `versionName` in [`app/build.gradle.kts`](app/build.gradle.kts)
+2. Commit and push a version tag:
+   ```bash
+   git tag v1.0.1
+   git push origin master --tags
+   ```
+3. The [GitHub Actions CI/CD workflow](.github/workflows/release-apk.yml) automatically builds the release APK and creates the GitHub Release with the APK attached.
 
 ---
 
